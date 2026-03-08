@@ -678,7 +678,7 @@ function mapAdRow(row){
     cat: row.category,
     desc: row.description,
     price: Number(row.price || 0),
-    contact: row.contact_session || row.contact || row.session_id || '',
+    contact: row.contact_session || row.contact || row.session_id || row.session || row.contact_id || '',
     poly: row.polygon_address || '',
     sid: row.anonimax_id || null,
     em: row.emoji || '📌',

@@ -66,6 +66,8 @@ module.exports = async (req, res) => {
       { ...basePayload, contact_session: contactSession },
       { ...basePayload, contact: contactSession },
       { ...basePayload, session_id: contactSession },
+      { ...basePayload, session: contactSession },
+      { ...basePayload, contact_id: contactSession },
       (() => {
         const p = { ...basePayload, contact: contactSession };
         delete p.anonimax_id;
@@ -87,29 +89,49 @@ module.exports = async (req, res) => {
     ];
 
     let lastError = null;
-    for (const attempt of attempts) {
-      const insertRes = await fetch(`${supabaseUrl}/rest/v1/ads`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(attempt)
-      });
+    for (const seedAttempt of attempts) {
+      const attempt = { ...seedAttempt };
 
-      const raw = await insertRes.text();
-      let json = null;
-      try { json = raw ? JSON.parse(raw) : null; } catch (_err) { json = { raw }; }
+      for (let i = 0; i < 8; i++) {
+        const insertRes = await fetch(`${supabaseUrl}/rest/v1/ads`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(attempt)
+        });
 
-      if (insertRes.ok) {
-        const row = Array.isArray(json) ? json[0] : json;
-        return res.status(200).json({ ok: true, ad: row || attempt });
+        const raw = await insertRes.text();
+        let json = null;
+        try { json = raw ? JSON.parse(raw) : null; } catch (_err) { json = { raw }; }
+
+        if (insertRes.ok) {
+          const row = Array.isArray(json) ? json[0] : json;
+          return res.status(200).json({ ok: true, ad: row || attempt });
+        }
+
+        lastError = { status: insertRes.status, details: json, payload: { ...attempt } };
+
+        const message = String(json?.message || json?.error || '');
+
+        // Dynamic schema adaptation: remove unknown columns and retry same attempt.
+        const missingCol = message.match(/Could not find the '([^']+)' column/i)?.[1];
+        if (missingCol && Object.prototype.hasOwnProperty.call(attempt, missingCol)) {
+          delete attempt[missingCol];
+          continue;
+        }
+
+        // FK / type compatibility for anonimax profile relation differences.
+        if (/foreign key|invalid input syntax for type uuid/i.test(message) && Object.prototype.hasOwnProperty.call(attempt, 'anonimax_id')) {
+          delete attempt.anonimax_id;
+          continue;
+        }
+
+        // Keep trying only on expected schema/data compatibility errors.
+        const shouldRetry =
+          /violates row-level security policy|foreign key|invalid input syntax|Could not find the/i.test(message) ||
+          insertRes.status === 400;
+        if (!shouldRetry) break;
+        break;
       }
-
-      lastError = { status: insertRes.status, details: json, payload: attempt };
-
-      const message = String(json?.message || json?.error || '');
-      const shouldRetry =
-        /violates row-level security policy|foreign key|invalid input syntax|Could not find the/i.test(message) ||
-        insertRes.status === 400;
-      if (!shouldRetry) break;
     }
 
     return res.status(lastError?.status || 400).json({
