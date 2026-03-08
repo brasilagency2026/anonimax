@@ -612,6 +612,36 @@ function openSessionDownload(){
   window.open('https://getsession.org/download', '_blank', 'noopener');
 }
 
+function openSessionLink(sessionId){
+  if(!sessionId){
+    showToast('ID Session invalido','error');
+    return;
+  }
+
+  const deepLink = `session://session.org/conversation?sessionid=${encodeURIComponent(sessionId)}`;
+  let appOpened = false;
+
+  const markOpened = () => {
+    appOpened = true;
+  };
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden) markOpened();
+  }, { once: true });
+  window.addEventListener('blur', markOpened, { once: true });
+
+  const iframe = document.createElement('iframe');
+  iframe.style.display = 'none';
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.src = deepLink;
+  document.body.appendChild(iframe);
+
+  setTimeout(() => {
+    iframe.remove();
+    if(appOpened) return;
+    openSessionFallbackModal();
+  }, 1200);
+}
+
 function handleSessionClick(event, sessionId){
   if(event){
     event.preventDefault();
@@ -621,8 +651,8 @@ function handleSessionClick(event, sessionId){
     showToast('ID Session invalido','error');
     return false;
   }
-  showToast('Abrindo opcoes do Session...','success');
-  openSessionFallbackModal();
+  showToast('Tentando abrir Session...','success');
+  openSessionLink(sessionId);
   return false;
 }
 
