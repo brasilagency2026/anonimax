@@ -5,6 +5,23 @@ declare const Deno: {
   env: { get: (key: string) => string | undefined };
 };
 
+function corsHeaders(origin: string | null) {
+  const allowed = [
+    'https://anonimax.com',
+    'https://www.anonimax.com',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+  const allowOrigin = origin && allowed.includes(origin) ? origin : 'https://anonimax.com';
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Content-Type': 'application/json'
+  };
+}
+
 // Supabase Edge Function: paypal-create-order
 // Required secrets:
 // - PAYPAL_CLIENT_ID
@@ -13,8 +30,14 @@ declare const Deno: {
 // - PAYPAL_BASE_URL (defaults to sandbox)
 
 Deno.serve(async (req: Request) => {
+  const headers = corsHeaders(req.headers.get('origin'));
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers, status: 200 });
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { headers, status: 405 });
   }
 
   try {
@@ -24,7 +47,7 @@ Deno.serve(async (req: Request) => {
     const secret = Deno.env.get('PAYPAL_SECRET');
 
     if (!clientId || !secret) {
-      return new Response(JSON.stringify({ error: 'Missing PayPal credentials' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Missing PayPal credentials' }), { headers, status: 500 });
     }
 
     const basic = btoa(`${clientId}:${secret}`);
@@ -39,7 +62,7 @@ Deno.serve(async (req: Request) => {
 
     const tokenJson = await tokenRes.json();
     if (!tokenRes.ok || !tokenJson.access_token) {
-      return new Response(JSON.stringify({ error: 'Could not get PayPal token', details: tokenJson }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Could not get PayPal token', details: tokenJson }), { headers, status: 500 });
     }
 
     const orderRes = await fetch(`${paypalBase}/v2/checkout/orders`, {
@@ -64,16 +87,16 @@ Deno.serve(async (req: Request) => {
 
     const orderJson = await orderRes.json();
     if (!orderRes.ok || !orderJson.id) {
-      return new Response(JSON.stringify({ error: 'Could not create PayPal order', details: orderJson }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Could not create PayPal order', details: orderJson }), { headers, status: 500 });
     }
 
     return new Response(JSON.stringify({ orderID: orderJson.id }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       status: 200
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: String(error) }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       status: 500
     });
   }

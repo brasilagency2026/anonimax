@@ -5,6 +5,23 @@ declare const Deno: {
   env: { get: (key: string) => string | undefined };
 };
 
+function corsHeaders(origin: string | null) {
+  const allowed = [
+    'https://anonimax.com',
+    'https://www.anonimax.com',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ];
+  const allowOrigin = origin && allowed.includes(origin) ? origin : 'https://anonimax.com';
+  return {
+    'Access-Control-Allow-Origin': allowOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Max-Age': '86400',
+    'Content-Type': 'application/json'
+  };
+}
+
 // Supabase Edge Function: paypal-capture-order
 // Required secrets:
 // - PAYPAL_CLIENT_ID
@@ -13,14 +30,20 @@ declare const Deno: {
 // - PAYPAL_BASE_URL (defaults to sandbox)
 
 Deno.serve(async (req: Request) => {
+  const headers = corsHeaders(req.headers.get('origin'));
+
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers, status: 200 });
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 });
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), { headers, status: 405 });
   }
 
   try {
     const { orderID } = await req.json();
     if (!orderID) {
-      return new Response(JSON.stringify({ error: 'orderID is required' }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'orderID is required' }), { headers, status: 400 });
     }
 
     const paypalBase = Deno.env.get('PAYPAL_BASE_URL') || 'https://api-m.sandbox.paypal.com';
@@ -28,7 +51,7 @@ Deno.serve(async (req: Request) => {
     const secret = Deno.env.get('PAYPAL_SECRET');
 
     if (!clientId || !secret) {
-      return new Response(JSON.stringify({ error: 'Missing PayPal credentials' }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Missing PayPal credentials' }), { headers, status: 500 });
     }
 
     const basic = btoa(`${clientId}:${secret}`);
@@ -43,7 +66,7 @@ Deno.serve(async (req: Request) => {
 
     const tokenJson = await tokenRes.json();
     if (!tokenRes.ok || !tokenJson.access_token) {
-      return new Response(JSON.stringify({ error: 'Could not get PayPal token', details: tokenJson }), { status: 500 });
+      return new Response(JSON.stringify({ error: 'Could not get PayPal token', details: tokenJson }), { headers, status: 500 });
     }
 
     const captureRes = await fetch(`${paypalBase}/v2/checkout/orders/${orderID}/capture`, {
@@ -56,16 +79,16 @@ Deno.serve(async (req: Request) => {
 
     const captureJson = await captureRes.json();
     if (!captureRes.ok || captureJson.status !== 'COMPLETED') {
-      return new Response(JSON.stringify({ error: 'Capture failed', details: captureJson }), { status: 400 });
+      return new Response(JSON.stringify({ error: 'Capture failed', details: captureJson }), { headers, status: 400 });
     }
 
     return new Response(JSON.stringify({ ok: true, status: captureJson.status, capture: captureJson }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       status: 200
     });
   } catch (error) {
     return new Response(JSON.stringify({ error: String(error) }), {
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       status: 500
     });
   }

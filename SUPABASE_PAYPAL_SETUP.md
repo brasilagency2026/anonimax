@@ -10,9 +10,13 @@
 3. Deploy:
 
 ```bash
-supabase functions deploy paypal-create-order
-supabase functions deploy paypal-capture-order
+supabase functions deploy paypal-create-order --no-verify-jwt
+supabase functions deploy paypal-capture-order --no-verify-jwt
 ```
+
+Important:
+- Browser calls from `https://anonimax.com` require CORS preflight (`OPTIONS`).
+- These functions are intended to be public endpoints (they validate payment server-side with PayPal secrets), so deploy with `--no-verify-jwt`.
 
 ## 3) Configure function secrets
 Set these in Supabase project secrets:
