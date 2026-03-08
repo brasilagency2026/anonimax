@@ -695,10 +695,11 @@ function handleSessionClick(event, sessionId){
   const isApple = /iphone|ipad|ipod/.test(ua);
   const isAndroid = /android/.test(ua);
 
-  // Open the app root so user can paste the copied ID in "Nova conversa".
-  const appLink = isApple ? 'sessionmessenger://' : 'session://';
-  if(isAndroid || isApple){
-    window.location.href = appLink;
+  // Open Session app explicitly on Android via package-targeted intent.
+  if(isAndroid){
+    window.location.href = 'intent://open#Intent;scheme=session;package=network.loki.messenger;end';
+  } else if(isApple){
+    window.location.href = 'sessionmessenger://';
   }
 
   return false;
