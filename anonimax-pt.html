@@ -811,12 +811,42 @@ async function saveAdToSupabase(ad){
     price: ad.price,
     contact_session: ad.contact,
     polygon_address: ad.poly || null,
-    anonimax_id: ad.sid,
+    anonimax_id: (typeof ad.sid === 'string' && /^ANX-/.test(ad.sid)) ? ad.sid : null,
     emoji: ad.em
   };
-  const { data, error } = await sb.from('ads').insert(payload).select().single();
-  if(error) throw error;
-  return mapAdRow(data);
+
+  const maxAttempts = Object.keys(payload).length + 2;
+  for(let i=0;i<maxAttempts;i++){
+    const { data, error } = await sb.from('ads').insert(payload).select().single();
+    if(!error) return mapAdRow(data);
+
+    const msg = String(error.message || '');
+    const details = String(error.details || '');
+    const full = `${msg} ${details}`;
+
+    // Compatibility path: remove columns that do not exist in current table.
+    const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1];
+    if(missingCol && (missingCol in payload)){
+      delete payload[missingCol];
+      continue;
+    }
+
+    // Compatibility path: some deployments use another type/fk for anonimax_id.
+    if(/foreign key|violates.*constraint|invalid input syntax for type uuid/i.test(full) && ('anonimax_id' in payload)){
+      delete payload.anonimax_id;
+      continue;
+    }
+
+    // Guard against invalid numeric formatting from legacy clients.
+    if(/invalid input syntax for type numeric/i.test(full) && ('price' in payload)){
+      payload.price = Number.isFinite(Number(payload.price)) ? Number(payload.price) : 0;
+      continue;
+    }
+
+    throw new Error(msg || details || 'Falha ao inserir anuncio em ads');
+  }
+
+  throw new Error('Falha ao salvar anuncio: schema de ads incompativel');
 }
 
 function loadPaypalSdk(){
