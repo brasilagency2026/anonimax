@@ -20,8 +20,8 @@ module.exports = (req, res) => {
     paypalClientId,
     publicationFee: Number(process.env.PUBLICATION_FEE || '4.90'),
     paypalFunctions: {
-      createOrder: process.env.PAYPAL_CREATE_ORDER_FUNCTION || 'paypal-create-order',
-      captureOrder: process.env.PAYPAL_CAPTURE_ORDER_FUNCTION || 'paypal-capture-order'
+      createOrder: process.env.PAYPAL_CREATE_ORDER_FUNCTION || '/api/paypal-create-order',
+      captureOrder: process.env.PAYPAL_CAPTURE_ORDER_FUNCTION || '/api/paypal-capture-order'
     }
   });
 };

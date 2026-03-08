@@ -553,8 +553,8 @@ let APP_CONFIG = {
   paypalClientId: '',
   publicationFee: 4.90,
   paypalFunctions: {
-    createOrder: 'paypal-create-order',
-    captureOrder: 'paypal-capture-order'
+    createOrder: '/api/paypal-create-order',
+    captureOrder: '/api/paypal-capture-order'
   }
 };
 
@@ -785,15 +785,31 @@ function loadPaypalSdk(){
 }
 
 async function callSupabaseFunction(name, body){
-  if(!APP_CONFIG.supabaseUrl) throw new Error('SUPABASE_URL ausente');
   if(!name) throw new Error('Nome da funcao PayPal ausente');
-  const res = await fetch(`${APP_CONFIG.supabaseUrl}/functions/v1/${name}`, {
+
+  const isAbsolute = /^https?:\/\//i.test(name);
+  const isLocalApi = name.startsWith('/api/');
+  const endpoint = isAbsolute
+    ? name
+    : (isLocalApi ? name : `${APP_CONFIG.supabaseUrl}/functions/v1/${name}`);
+
+  if(!isAbsolute && !isLocalApi && !APP_CONFIG.supabaseUrl){
+    throw new Error('SUPABASE_URL ausente para Edge Function');
+  }
+
+  const headers = {
+    'Content-Type':'application/json'
+  };
+
+  // Supabase Edge Functions require anon key headers.
+  if(endpoint.includes('/functions/v1/')){
+    headers.apikey = APP_CONFIG.supabaseAnonKey;
+    headers.Authorization = `Bearer ${APP_CONFIG.supabaseAnonKey}`;
+  }
+
+  const res = await fetch(endpoint, {
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      apikey: APP_CONFIG.supabaseAnonKey,
-      Authorization: `Bearer ${APP_CONFIG.supabaseAnonKey}`
-    },
+    headers,
     body: JSON.stringify(body || {})
   });
   const raw = await res.text();

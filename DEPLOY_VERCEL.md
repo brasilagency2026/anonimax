@@ -1,15 +1,9 @@
-# Deploy Vercel (Supabase + PayPal Sandbox)
+# Deploy Vercel (Supabase + PayPal via Vercel API)
 
 ## 1) Prerequis
 - Supabase project already created
 - SQL applied from `supabase/schema.sql`
-- Supabase edge functions deployed:
-  - `paypal-create-order`
-  - `paypal-capture-order`
-- Supabase function secrets set:
-  - `PAYPAL_CLIENT_ID`
-  - `PAYPAL_SECRET`
-  - `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com`
+- No Supabase Edge Function is required for PayPal when using Vercel API routes.
 
 ## 2) Import project in Vercel
 1. Push this folder to GitHub/GitLab/Bitbucket.
@@ -23,9 +17,10 @@ In Vercel project settings -> Environment Variables, add:
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `<anon-key>`
 - `PAYPAL_CLIENT_ID` = `<paypal-sandbox-client-id>`
 - `PAYPAL_CLIENT_SECRET` = `<paypal-sandbox-secret>`
+- `PAYPAL_BASE_URL` = `https://api-m.sandbox.paypal.com`
 - `PUBLICATION_FEE` = `4.90`
-- `PAYPAL_CREATE_ORDER_FUNCTION` = `paypal-create-order`
-- `PAYPAL_CAPTURE_ORDER_FUNCTION` = `paypal-capture-order`
+- `PAYPAL_CREATE_ORDER_FUNCTION` = `/api/paypal-create-order`
+- `PAYPAL_CAPTURE_ORDER_FUNCTION` = `/api/paypal-capture-order`
 
 Then redeploy.
 
@@ -46,5 +41,5 @@ Then open:
 
 ## Notes
 - `SUPABASE_ANON_KEY` is public by design for frontend usage.
-- Keep your PayPal secret in server-side environments only (Supabase function secrets and/or Vercel server env), never in browser code.
+- Keep your PayPal secret only in Vercel server env (`PAYPAL_CLIENT_SECRET`), never in browser code.
 - Root path `/` is rewritten to `anonimax-pt.html` via `vercel.json`.
