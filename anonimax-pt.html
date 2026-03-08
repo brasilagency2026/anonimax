@@ -864,6 +864,36 @@ async function saveAdToSupabase(ad){
   throw new Error('Falha ao salvar anuncio: schema de ads incompativel');
 }
 
+async function saveAdToServer(ad){
+  const payload = {
+    title: ad.title,
+    category: ad.cat,
+    description: ad.desc,
+    price: ad.price,
+    contact_session: ad.contact,
+    polygon_address: ad.poly || null,
+    anonimax_id: (typeof ad.sid === 'string' && /^ANX-/.test(ad.sid)) ? ad.sid : null,
+    emoji: ad.em
+  };
+
+  const data = await callSupabaseFunction('/api/publish-ad', payload);
+  if(data?.ad) return mapAdRow(data.ad);
+
+  const fallbackRow = {
+    id: ad.id || Date.now(),
+    title: payload.title,
+    category: payload.category,
+    description: payload.description,
+    price: payload.price,
+    contact_session: payload.contact_session,
+    polygon_address: payload.polygon_address,
+    anonimax_id: payload.anonimax_id,
+    emoji: payload.emoji,
+    created_at: new Date().toISOString()
+  };
+  return mapAdRow(fallbackRow);
+}
+
 function loadPaypalSdk(){
   if(window.paypal) return Promise.resolve();
   if(paypalSdkPromise) return paypalSdkPromise;
@@ -940,7 +970,15 @@ async function publishPendingAd(){
     ...pendingAd,
     date: new Date().toISOString().split('T')[0]
   };
-  const savedAd = cloudMode ? await saveAdToSupabase(adPayload) : adPayload;
+  let savedAd = adPayload;
+  if(cloudMode){
+    try{
+      savedAd = await saveAdToServer(adPayload);
+    }catch(serverErr){
+      // Fallback for local/dev without service role route.
+      savedAd = await saveAdToSupabase(adPayload);
+    }
+  }
   ads.unshift(savedAd);
   ['adTitle','adDesc','adContact','adPoly'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.getElementById('adPrice').value='';

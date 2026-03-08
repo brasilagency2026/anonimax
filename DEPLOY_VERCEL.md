@@ -15,6 +15,7 @@
 In Vercel project settings -> Environment Variables, add:
 - `NEXT_PUBLIC_SUPABASE_URL` = `https://<project-ref>.supabase.co`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `<anon-key>`
+- `SUPABASE_SERVICE_ROLE_KEY` = `<service-role-key>`
 - `PAYPAL_CLIENT_ID` = `<paypal-sandbox-client-id>`
 - `PAYPAL_CLIENT_SECRET` = `<paypal-sandbox-secret>`
 - `PAYPAL_BASE_URL` = `https://api-m.sandbox.paypal.com`
@@ -41,5 +42,6 @@ Then open:
 
 ## Notes
 - `SUPABASE_ANON_KEY` is public by design for frontend usage.
+- `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only (used by `/api/publish-ad`).
 - Keep your PayPal secret only in Vercel server env (`PAYPAL_CLIENT_SECRET`), never in browser code.
 - Root path `/` is rewritten to `anonimax-pt.html` via `vercel.json`.
