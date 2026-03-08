@@ -683,6 +683,7 @@ function handleSessionClick(event, sessionId){
     event.preventDefault();
     event.stopPropagation();
   }
+  showToast('Abrindo opcoes do Session...','success');
   openSessionFallbackModal(sessionId);
   return false;
 }
