@@ -406,9 +406,10 @@
     </div>
     <div class="modal-body">
       <div style="font-size:0.86rem;color:var(--muted);line-height:1.7;margin-bottom:16px">
-        Nao foi possivel abrir o app Session automaticamente neste dispositivo.
+        Para conversar com seguranca, abra pelo app Session. Se o app nao estiver instalado, use o guia ou download abaixo.
       </div>
       <div style="display:flex;flex-direction:column;gap:9px">
+        <button class="submit-btn submit-green" onclick="tryOpenSessionFromModal()">🚀 Tentar abrir Session</button>
         <button class="submit-btn submit-green" onclick="openSessionGuide()">📖 Ver guia de instalacao</button>
         <button class="submit-btn submit-gold" onclick="openSessionDownload()">⬇️ Baixar Session</button>
         <button class="submit-btn" onclick="closeSessionHelpModal()" style="background:transparent;border:1px solid var(--border);color:var(--muted)">Cancelar</button>
@@ -594,7 +595,10 @@ function getSessionHelpTab(){
   return 'como';
 }
 
-function openSessionFallbackModal(){
+let pendingSessionId = '';
+
+function openSessionFallbackModal(sessionId){
+  if(sessionId) pendingSessionId = sessionId;
   document.getElementById('sessionHelpModal').classList.add('open');
 }
 
@@ -610,6 +614,15 @@ function openSessionGuide(){
 function openSessionDownload(){
   closeSessionHelpModal();
   window.open('https://getsession.org/download', '_blank', 'noopener');
+}
+
+function tryOpenSessionFromModal(){
+  if(!pendingSessionId){
+    showToast('ID Session invalido','error');
+    return;
+  }
+  closeSessionHelpModal();
+  openSessionLink(pendingSessionId);
 }
 
 function openSessionLink(sessionId){
@@ -642,7 +655,7 @@ function openSessionLink(sessionId){
   setTimeout(() => {
     iframe.remove();
     if(appOpened) return;
-    openSessionFallbackModal();
+    openSessionFallbackModal(sessionId);
   }, 1000);
 }
 
@@ -651,7 +664,7 @@ function handleSessionClick(event, sessionId){
     event.preventDefault();
     event.stopPropagation();
   }
-  openSessionLink(sessionId);
+  openSessionFallbackModal(sessionId);
   return false;
 }
 
