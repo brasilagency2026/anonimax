@@ -770,9 +770,15 @@ async function loadDataFromSupabase(){
     sb.from('ads').select('*').order('created_at',{ascending:false})
   ]);
   if(profilesRes.error) throw profilesRes.error;
-  if(adsRes.error) throw adsRes.error;
   members = (profilesRes.data || []).map(mapProfileRow);
-  ads = (adsRes.data || []).map(mapAdRow);
+
+  if(adsRes.error){
+    // Some deployments block anon SELECT on ads; fallback to server route with service role.
+    const serverData = await callSupabaseFunction('/api/list-ads', {});
+    ads = (serverData.ads || []).map(mapAdRow);
+  } else {
+    ads = (adsRes.data || []).map(mapAdRow);
+  }
 }
 
 async function saveProfileToSupabase(member){

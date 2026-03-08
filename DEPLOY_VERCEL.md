@@ -43,5 +43,6 @@ Then open:
 ## Notes
 - `SUPABASE_ANON_KEY` is public by design for frontend usage.
 - `SUPABASE_SERVICE_ROLE_KEY` must stay server-side only (used by `/api/publish-ad`).
+- `SUPABASE_SERVICE_ROLE_KEY` is also used by `/api/list-ads` fallback when anon SELECT on `ads` is restricted.
 - Keep your PayPal secret only in Vercel server env (`PAYPAL_CLIENT_SECRET`), never in browser code.
 - Root path `/` is rewritten to `anonimax-pt.html` via `vercel.json`.
