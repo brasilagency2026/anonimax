@@ -644,7 +644,7 @@ function getSessionHref(sessionId){
   const isMobileApple = /iphone|ipad|ipod/.test(ua);
 
   if(isAndroid){
-    return `sessionmessenger://DM?sessionID=${encodedId}`;
+    return `session://session.org/conversation?sessionid=${encodedId}`;
   }
   if(isMobileApple){
     return `sessionmessenger://DM?sessionID=${encodedId}`;
@@ -668,17 +668,15 @@ function copyTextSafe(text){
 }
 
 function handleSessionClick(event, sessionId){
-  if(event){
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
   if(!sessionId){
+    if(event){
+      event.preventDefault();
+      event.stopPropagation();
+    }
     showToast('ID Session invalido','error');
     return false;
   }
 
-  const deepLink = getSessionHref(sessionId);
   showToast('Abrindo Session...','success');
 
   const ua = (navigator.userAgent || '').toLowerCase();
@@ -697,10 +695,8 @@ function handleSessionClick(event, sessionId){
     }
   }
 
-  // Explicit navigation avoids browser differences with async inline onclick handlers.
-  window.location.href = deepLink;
-
-  return false;
+  // Let the anchor href perform native deep-link navigation in the same user gesture.
+  return true;
 }
 
 async function initCloud(){
