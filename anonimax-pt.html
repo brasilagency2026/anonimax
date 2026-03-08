@@ -698,14 +698,10 @@ function openSessionLink(sessionId){
   }, { once: true });
   window.addEventListener('blur', markOpened, { once: true });
 
-  const iframe = document.createElement('iframe');
-  iframe.style.display = 'none';
-  iframe.setAttribute('aria-hidden', 'true');
-  iframe.src = deepLink;
-  document.body.appendChild(iframe);
+  // Direct navigation from the user gesture gives the highest chance to open native app handlers.
+  window.location.assign(deepLink);
 
   setTimeout(() => {
-    iframe.remove();
     if(appOpened) return;
     openSessionFallbackModal();
   }, 1200);
