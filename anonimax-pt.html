@@ -43,7 +43,7 @@
   .header-search input{background:none;border:none;outline:none;color:var(--text);font-family:'Syne',sans-serif;font-size:0.83rem;width:100%;}
   .header-search input::placeholder{color:var(--muted);}
 
-  .search-drop{position:absolute;top:70px;left:50%;transform:translateX(-50%);width:300px;background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
+  .search-drop{position:absolute;top:70px;left:50%;transform:translateX(-50%);width:min(300px,92vw);background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 8px 32px rgba(0,0,0,0.5);}
   .sdrop-item{padding:13px 16px;display:flex;align-items:center;gap:11px;cursor:pointer;transition:background 0.15s;border-bottom:1px solid var(--border);}
   .sdrop-item:last-child{border-bottom:none;}
   .sdrop-item:hover{background:var(--surface2);}
@@ -215,7 +215,7 @@
     .sort-select{width:100%;}
     .ads-grid{grid-template-columns:1fr;gap:11px;}
     .ad-img{height:132px;}
-    .modal-overlay{padding:10px;}
+    .modal-overlay{padding:10px;padding-bottom:max(10px, env(safe-area-inset-bottom));align-items:flex-start;}
     .modal{max-height:92vh;border-radius:14px;}
     .modal-header{padding:14px 14px 12px;}
     .modal-body{padding:14px;}
@@ -224,6 +224,14 @@
     .tab-panel{padding:14px;}
     .tut-tabs{padding:0 12px;}
     .toast{left:10px;right:10px;bottom:10px;max-width:none;}
+    .search-drop{top:56px;left:0;transform:none;}
+    .form-input,.form-select,.form-textarea{font-size:16px;}
+    .chip{min-height:34px;display:inline-flex;align-items:center;}
+    .id-result-value{font-size:clamp(1.35rem,7vw,1.8rem);letter-spacing:1px;}
+    .reg-steps{overflow-x:auto;}
+    .reg-step{min-width:110px;}
+    #rf2 > div[style*='display:flex;gap:9px']{flex-direction:column;}
+    #rf3 > div[style*='display:flex;gap:7px']{flex-direction:column;}
   }
 
   @media (max-width: 520px){
@@ -235,6 +243,18 @@
     .stat{padding:7px 0;border:1px solid var(--border);border-radius:10px;background:var(--surface);}
     .card-body{padding:13px;}
     .submit-btn{font-size:0.83rem;padding:11px;}
+    .hero-badge{max-width:100%;justify-content:center;text-align:center;line-height:1.4;}
+    .profile-action{font-size:0.84rem;padding:12px;}
+    .ad-body{padding:11px;}
+    .modal-title{font-size:0.92rem;}
+  }
+
+  @media (max-width: 390px){
+    .hero h1{font-size:1.65rem;}
+    .hero p{font-size:0.82rem;}
+    .btn{font-size:0.74rem;}
+    .card-title{font-size:0.72rem;}
+    .tut-title{font-size:0.84rem;}
   }
   ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 </style>
