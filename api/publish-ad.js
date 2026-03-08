@@ -10,7 +10,7 @@ module.exports = async (req, res) => {
     const title = String(body.title || '').trim();
     const category = String(body.category || '').trim();
     const description = String(body.description || '').trim();
-    const contactSession = String(body.contact_session || '').trim();
+    const contactSession = String(body.contact_session || body.contact || body.session_id || '').trim();
     const polygonAddress = body.polygon_address ? String(body.polygon_address).trim() : null;
     const anonimaxId = body.anonimax_id ? String(body.anonimax_id).trim() : null;
     const emoji = body.emoji ? String(body.emoji) : '📌';
@@ -45,12 +45,11 @@ module.exports = async (req, res) => {
       // Ignore decode errors; Supabase will still validate the token server-side.
     }
 
-    const payload = {
+    const basePayload = {
       title,
       category,
       description,
       price,
-      contact_session: contactSession,
       polygon_address: polygonAddress || null,
       anonimax_id: anonimaxId && /^ANX-/.test(anonimaxId) ? anonimaxId : null,
       emoji
@@ -64,20 +63,22 @@ module.exports = async (req, res) => {
     };
 
     const attempts = [
-      { ...payload },
+      { ...basePayload, contact_session: contactSession },
+      { ...basePayload, contact: contactSession },
+      { ...basePayload, session_id: contactSession },
       (() => {
-        const p = { ...payload };
+        const p = { ...basePayload, contact: contactSession };
         delete p.anonimax_id;
         return p;
       })(),
       (() => {
-        const p = { ...payload };
+        const p = { ...basePayload, contact: contactSession };
         delete p.anonimax_id;
         delete p.emoji;
         return p;
       })(),
       (() => {
-        const p = { ...payload };
+        const p = { ...basePayload, contact: contactSession };
         delete p.anonimax_id;
         delete p.emoji;
         delete p.polygon_address;
