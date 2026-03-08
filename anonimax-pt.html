@@ -695,9 +695,10 @@ function handleSessionClick(event, sessionId){
   const isApple = /iphone|ipad|ipod/.test(ua);
   const isAndroid = /android/.test(ua);
 
-  // Open Session app explicitly on Android via package-targeted intent.
+  // Never use intent:// here: on many Android devices it redirects to Play Store.
+  // Use Session schemes only so tap either opens the app or does nothing.
   if(isAndroid){
-    window.location.href = 'intent://open#Intent;scheme=session;package=network.loki.messenger;end';
+    window.location.href = `session://session.org/conversation?sessionid=${encodeURIComponent(sessionId)}`;
   } else if(isApple){
     window.location.href = 'sessionmessenger://';
   }
