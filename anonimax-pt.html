@@ -652,7 +652,30 @@ function getSessionHref(sessionId){
   return `session://session.org/conversation?sessionid=${encodedId}`;
 }
 
-function handleSessionClick(event, sessionId){
+async function copyTextSafe(text){
+  if(!text) return false;
+  if(navigator.clipboard && window.isSecureContext){
+    try{
+      await navigator.clipboard.writeText(text);
+      return true;
+    }catch(_err){
+      // fallback below
+    }
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly','');
+  ta.style.position = 'fixed';
+  ta.style.left = '-9999px';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try{ ok = document.execCommand('copy'); }catch(_err){ ok = false; }
+  ta.remove();
+  return ok;
+}
+
+async function handleSessionClick(event, sessionId){
   if(!sessionId){
     if(event){
       event.preventDefault();
@@ -666,7 +689,16 @@ function handleSessionClick(event, sessionId){
 
   // If no app handler is registered on mobile, redirect to Session download.
   const ua = (navigator.userAgent || '').toLowerCase();
+  const isAndroid = /android/.test(ua);
   const isMobile = /android|iphone|ipad|ipod/.test(ua);
+
+  // Android Session currently opens app from deep-link, but does not always jump to DM.
+  // Copying the contact ID on click makes pasting into "Nova conversa" immediate.
+  if(isAndroid){
+    const copied = await copyTextSafe(sessionId);
+    if(copied) showToast('ID Session copiado para colar no app.','success');
+  }
+
   if(isMobile){
     let switchedToApp = false;
     const markHidden = () => { if(document.hidden) switchedToApp = true; };
