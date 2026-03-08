@@ -19,9 +19,10 @@
 
 ## 3) Set Vercel environment variables
 In Vercel project settings -> Environment Variables, add:
-- `SUPABASE_URL` = `https://<project-ref>.supabase.co`
-- `SUPABASE_ANON_KEY` = `<anon-key>`
+- `NEXT_PUBLIC_SUPABASE_URL` = `https://<project-ref>.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `<anon-key>`
 - `PAYPAL_CLIENT_ID` = `<paypal-sandbox-client-id>`
+- `PAYPAL_CLIENT_SECRET` = `<paypal-sandbox-secret>`
 - `PUBLICATION_FEE` = `4.90`
 - `PAYPAL_CREATE_ORDER_FUNCTION` = `paypal-create-order`
 - `PAYPAL_CAPTURE_ORDER_FUNCTION` = `paypal-capture-order`
@@ -45,5 +46,5 @@ Then open:
 
 ## Notes
 - `SUPABASE_ANON_KEY` is public by design for frontend usage.
-- Keep `PAYPAL_SECRET` only in Supabase function secrets, never in Vercel frontend env.
+- Keep your PayPal secret in server-side environments only (Supabase function secrets and/or Vercel server env), never in browser code.
 - Root path `/` is rewritten to `anonimax-pt.html` via `vercel.json`.
