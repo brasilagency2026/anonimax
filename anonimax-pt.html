@@ -678,6 +678,12 @@ function mapAdRow(row){
   };
 }
 
+function isLegacyDemoAd(ad){
+  const title = String(ad?.title || '').trim().toLowerCase();
+  const desc = String(ad?.desc || '').trim().toLowerCase();
+  return title === 'desenvolvimento web freelance' && desc.includes('5 anos react/node.js');
+}
+
 function getSessionHref(sessionId){
   if(!sessionId) return '#';
   const encodedId = encodeURIComponent(sessionId);
@@ -768,11 +774,11 @@ async function loadDataFromSupabase(){
   if(adsRes.error){
     // Some deployments block anon SELECT on ads; fallback to server route with service role.
     const serverData = await callSupabaseFunction('/api/list-ads', {});
-    const mappedAds = (serverData.ads || []).map(mapAdRow);
+    const mappedAds = (serverData.ads || []).map(mapAdRow).filter((ad)=>!isLegacyDemoAd(ad));
     // Keep current in-memory ads if server returns an empty/invalid list.
     ads = mappedAds.length ? mappedAds : previousAds;
   } else {
-    const mappedAds = (adsRes.data || []).map(mapAdRow);
+    const mappedAds = (adsRes.data || []).map(mapAdRow).filter((ad)=>!isLegacyDemoAd(ad));
     ads = mappedAds.length ? mappedAds : previousAds;
   }
 }

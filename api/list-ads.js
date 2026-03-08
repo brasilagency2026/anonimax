@@ -24,7 +24,14 @@ module.exports = async (_req, res) => {
       return res.status(listRes.status).json({ error: 'Supabase list ads failed', details: json });
     }
 
-    return res.status(200).json({ ads: Array.isArray(json) ? json : [] });
+    const ads = Array.isArray(json) ? json : [];
+    const filteredAds = ads.filter((ad) => {
+      const title = String(ad?.title || '').trim().toLowerCase();
+      const description = String(ad?.description || '').trim().toLowerCase();
+      return !(title === 'desenvolvimento web freelance' && description.includes('5 anos react/node.js'));
+    });
+
+    return res.status(200).json({ ads: filteredAds });
   } catch (error) {
     return res.status(500).json({ error: String(error?.message || error) });
   }
