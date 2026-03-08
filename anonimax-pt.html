@@ -544,8 +544,8 @@ function nextAnonimaxId(){
 function mapProfileRow(row){
   return {
     id: row.anonimax_id,
-    nick: row.nick,
-    session: row.session_id,
+    nick: row.nick || row.nickname || row.name || row.apelido || row.anonimax_id || 'Anonimo',
+    session: row.session_id || row.session || '',
     poly: row.polygon_address || '',
     since: (row.since || row.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0],
     av: row.avatar || '🛡️'
@@ -588,7 +588,7 @@ async function loadDataFromSupabase(){
 
 async function saveProfileToSupabase(member){
   if(!sb) return;
-  const payload = {
+  const basePayload = {
     anonimax_id: member.id,
     nick: member.nick,
     session_id: member.session,
@@ -597,18 +597,20 @@ async function saveProfileToSupabase(member){
     avatar: member.av
   };
 
-  let { error } = await sb.from('profiles').insert(payload);
-  if(!error) return;
+  const payload = { ...basePayload };
+  const maxAttempts = Object.keys(payload).length;
+  for(let i=0;i<maxAttempts;i++){
+    let { error } = await sb.from('profiles').insert(payload);
+    if(!error) return;
 
-  // Backward compatibility: some deployed schemas may still miss optional columns.
-  const msg = String(error.message || '');
-  const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1];
-  if(!missingCol || !(missingCol in payload)) throw error;
+    // Compatibility path: remove unknown columns and retry.
+    const msg = String(error.message || '');
+    const missingCol = msg.match(/Could not find the '([^']+)' column/i)?.[1];
+    if(!missingCol || !(missingCol in payload)) throw error;
+    delete payload[missingCol];
+  }
 
-  const fallbackPayload = { ...payload };
-  delete fallbackPayload[missingCol];
-  ({ error } = await sb.from('profiles').insert(fallbackPayload));
-  if(error) throw error;
+  throw new Error('Falha ao salvar perfil: schema de profiles incompativel');
 }
 
 async function saveAdToSupabase(ad){
