@@ -652,16 +652,8 @@ function getSessionHref(sessionId){
   return `session://session.org/conversation?sessionid=${encodedId}`;
 }
 
-async function copyTextSafe(text){
+function copyTextSafe(text){
   if(!text) return false;
-  if(navigator.clipboard && window.isSecureContext){
-    try{
-      await navigator.clipboard.writeText(text);
-      return true;
-    }catch(_err){
-      // fallback below
-    }
-  }
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.setAttribute('readonly','');
@@ -675,16 +667,18 @@ async function copyTextSafe(text){
   return ok;
 }
 
-async function handleSessionClick(event, sessionId){
+function handleSessionClick(event, sessionId){
+  if(event){
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
   if(!sessionId){
-    if(event){
-      event.preventDefault();
-      event.stopPropagation();
-    }
     showToast('ID Session invalido','error');
     return false;
   }
 
+  const deepLink = getSessionHref(sessionId);
   showToast('Abrindo Session...','success');
 
   const ua = (navigator.userAgent || '').toLowerCase();
@@ -693,11 +687,20 @@ async function handleSessionClick(event, sessionId){
   // Android Session currently opens app from deep-link, but does not always jump to DM.
   // Copying the contact ID on click makes pasting into "Nova conversa" immediate.
   if(isAndroid){
-    const copied = await copyTextSafe(sessionId);
-    if(copied) showToast('ID Session copiado para colar no app.','success');
+    let copied = copyTextSafe(sessionId);
+    if(!copied && navigator.clipboard && window.isSecureContext){
+      navigator.clipboard.writeText(sessionId).then(()=>{
+        showToast('ID Session copiado para colar no app.','success');
+      }).catch(()=>{});
+    } else if(copied){
+      showToast('ID Session copiado para colar no app.','success');
+    }
   }
 
-  return true;
+  // Explicit navigation avoids browser differences with async inline onclick handlers.
+  window.location.href = deepLink;
+
+  return false;
 }
 
 async function initCloud(){
