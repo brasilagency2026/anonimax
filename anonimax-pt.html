@@ -561,6 +561,7 @@ let APP_CONFIG = {
 let sb = null;
 let cloudMode = false;
 let paypalSdkPromise = null;
+let paypalPaymentCompleted = false;
 
 async function loadRuntimeConfig(){
   try{
@@ -784,6 +785,8 @@ function loadPaypalSdk(){
 }
 
 async function callSupabaseFunction(name, body){
+  if(!APP_CONFIG.supabaseUrl) throw new Error('SUPABASE_URL ausente');
+  if(!name) throw new Error('Nome da funcao PayPal ausente');
   const res = await fetch(`${APP_CONFIG.supabaseUrl}/functions/v1/${name}`, {
     method:'POST',
     headers:{
@@ -793,8 +796,12 @@ async function callSupabaseFunction(name, body){
     },
     body: JSON.stringify(body || {})
   });
-  const json = await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(json.error || `Erro HTTP ${res.status}`);
+  const raw = await res.text();
+  let json = {};
+  if(raw){
+    try{ json = JSON.parse(raw); }catch(_err){ json = { raw }; }
+  }
+  if(!res.ok) throw new Error(json.error || json.message || raw || `Erro HTTP ${res.status}`);
   return json;
 }
 
@@ -804,11 +811,13 @@ async function createPaypalOrder(){
     currency: 'BRL',
     description: 'Taxa de publicação Anonimax'
   });
-  if(!data.orderID) throw new Error('orderID nao retornado pela funcao');
-  return data.orderID;
+  const orderID = data.orderID || data.id || data.orderId;
+  if(!orderID) throw new Error('orderID nao retornado pela funcao');
+  return orderID;
 }
 
 async function capturePaypalOrder(orderID){
+  if(!orderID) throw new Error('orderID ausente para captura');
   await callSupabaseFunction(APP_CONFIG.paypalFunctions.captureOrder, { orderID });
 }
 
@@ -835,14 +844,23 @@ async function renderPaypalButtons(){
   holder.innerHTML = '';
   window.paypal.Buttons({
     style: { layout:'vertical', color:'gold', shape:'rect', label:'paypal' },
-    createOrder: async () => createPaypalOrder(),
+    createOrder: async () => {
+      try{
+        return await createPaypalOrder();
+      }catch(err){
+        showToast(`Erro ao criar pagamento: ${err.message || err}`,'error');
+        throw err;
+      }
+    },
     onApprove: async (data) => {
-      await capturePaypalOrder(data.orderID);
+      const orderID = data.orderID || data.orderId;
+      await capturePaypalOrder(orderID);
+      paypalPaymentCompleted = true;
       await publishPendingAd();
       closePay();
       showToast('✓ Pagamento confirmado e anúncio publicado!','success');
     },
-    onError: () => showToast('Falha no pagamento PayPal','error')
+    onError: (err) => showToast(`Falha no pagamento PayPal: ${err?.message || 'erro desconhecido'}`,'error')
   }).render('#paypalButtons');
 }
 
@@ -1025,6 +1043,7 @@ function submitAd(){
   const sel=members.find(m=>m.id===contact||m.session===contact);
   const ems={Venda:'🛒',Imóveis:'🏠',Emprego:'💼',Serviços:'⚙️',Veículos:'🚗',Eletrônicos:'📱',Outro:'📌'};
   pendingAd={title,cat,desc,price,contact,poly,sid:sel?sel.id:null,em:ems[cat]||'📌'};
+  paypalPaymentCompleted = false;
   openPayModal();
 }
 async function openPayModal(){
@@ -1049,6 +1068,10 @@ function closePay(){document.getElementById('payModal').classList.remove('open')
 function fmtCard(i){let v=i.value.replace(/\s+/g,'').replace(/[^0-9]/gi,'');let m=v.match(/\d{4,16}/g),match=m&&m[0]||'',p=[];for(let j=0,l=match.length;j<l;j+=4)p.push(match.substring(j,j+4));i.value=p.length?p.join(' '):v;}
 async function confirmPay(){
   if(!pendingAd) return;
+  if(curPayMethod==='paypal' && cloudMode && !paypalPaymentCompleted){
+    showToast('Use o botao PayPal para concluir o pagamento.','error');
+    return;
+  }
   try{
     await publishPendingAd();
     closePay();
