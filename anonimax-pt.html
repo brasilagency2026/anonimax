@@ -644,7 +644,7 @@ function getSessionHref(sessionId){
   const isMobileApple = /iphone|ipad|ipod/.test(ua);
 
   if(isAndroid){
-    return `intent://DM?sessionID=${encodedId}#Intent;scheme=sessionmessenger;package=network.loki.messenger;end`;
+    return `sessionmessenger://DM?sessionID=${encodedId}`;
   }
   if(isMobileApple){
     return `sessionmessenger://DM?sessionID=${encodedId}`;
