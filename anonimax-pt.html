@@ -397,6 +397,26 @@
   </div>
 </div>
 
+<!-- ═══ MODAL: SESSION FALLBACK ═══ -->
+<div class="modal-overlay" id="sessionHelpModal">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <span class="modal-title">🔒 Abrir no Session</span>
+      <button class="modal-close" onclick="closeSessionHelpModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:0.86rem;color:var(--muted);line-height:1.7;margin-bottom:16px">
+        Nao foi possivel abrir o app Session automaticamente neste dispositivo.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px">
+        <button class="submit-btn submit-green" onclick="openSessionGuide()">📖 Ver guia de instalacao</button>
+        <button class="submit-btn submit-gold" onclick="openSessionDownload()">⬇️ Baixar Session</button>
+        <button class="submit-btn" onclick="closeSessionHelpModal()" style="background:transparent;border:1px solid var(--border);color:var(--muted)">Cancelar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL: TUTORIAL ═══ -->
 <div class="modal-overlay" id="tutModal">
   <div class="modal tut-modal">
@@ -574,13 +594,30 @@ function getSessionHelpTab(){
   return 'como';
 }
 
+function openSessionFallbackModal(){
+  document.getElementById('sessionHelpModal').classList.add('open');
+}
+
+function closeSessionHelpModal(){
+  document.getElementById('sessionHelpModal').classList.remove('open');
+}
+
+function openSessionGuide(){
+  closeSessionHelpModal();
+  openTutorial(getSessionHelpTab());
+}
+
+function openSessionDownload(){
+  closeSessionHelpModal();
+  window.open('https://getsession.org/download', '_blank', 'noopener');
+}
+
 function openSessionLink(sessionId){
   if(!sessionId){
     showToast('ID Session invalido','error');
     return;
   }
   const deepLink = `session://session.org/conversation?sessionid=${encodeURIComponent(sessionId)}`;
-  const downloadUrl = 'https://getsession.org/download';
   let appOpened = false;
 
   const onVis = () => {
@@ -592,12 +629,7 @@ function openSessionLink(sessionId){
 
   setTimeout(() => {
     if(appOpened) return;
-    const wantsGuide = confirm('Nao foi possivel abrir o Session automaticamente.\n\nClique OK para ver o guia de instalacao, ou Cancelar para abrir o site de download.');
-    if(wantsGuide){
-      openTutorial(getSessionHelpTab());
-    } else {
-      window.open(downloadUrl, '_blank', 'noopener');
-    }
+    openSessionFallbackModal();
   }, 1400);
 }
 
@@ -960,7 +992,7 @@ function closeTut(){document.getElementById('tutModal').classList.remove('open')
 function swTab(name){const tabs=['como','android','ios','id','chainless'];document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===name));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));}
 
 // ═══ CLOSE ON OVERLAY ═══
-['detailModal','postModal','payModal','tutModal','registerModal','profileModal'].forEach(id=>{
+['detailModal','postModal','payModal','sessionHelpModal','tutModal','registerModal','profileModal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target!==this)return;
     if(id==='detailModal')closeDetail();
