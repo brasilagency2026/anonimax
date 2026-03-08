@@ -414,6 +414,7 @@
         <button class="submit-btn submit-gold" onclick="openSessionDownload()">⬇️ Baixar Session</button>
         <button class="submit-btn" onclick="closeSessionHelpModal()" style="background:transparent;border:1px solid var(--border);color:var(--muted)">Cancelar</button>
       </div>
+      <div id="sessionLaunchStatus" style="display:none;margin-top:12px;font-size:0.76rem;color:var(--muted);line-height:1.6"></div>
     </div>
   </div>
 </div>
@@ -599,6 +600,11 @@ let pendingSessionId = '';
 
 function openSessionFallbackModal(sessionId){
   if(sessionId) pendingSessionId = sessionId;
+  const status = document.getElementById('sessionLaunchStatus');
+  if(status){
+    status.style.display = 'none';
+    status.textContent = '';
+  }
   document.getElementById('sessionHelpModal').classList.add('open');
 }
 
@@ -621,11 +627,16 @@ function tryOpenSessionFromModal(){
     showToast('ID Session invalido','error');
     return;
   }
-  closeSessionHelpModal();
-  openSessionLink(pendingSessionId);
+  const status = document.getElementById('sessionLaunchStatus');
+  if(status){
+    status.style.display = 'block';
+    status.textContent = 'Tentando abrir o app Session...';
+  }
+  openSessionLink(pendingSessionId, { keepModalOpen: true });
 }
 
-function openSessionLink(sessionId){
+function openSessionLink(sessionId, opts = {}){
+  const keepModalOpen = Boolean(opts.keepModalOpen);
   if(!sessionId){
     showToast('ID Session invalido','error');
     return;
@@ -648,13 +659,21 @@ function openSessionLink(sessionId){
     iframe.src = deepLink;
   } catch (_err) {
     iframe.remove();
-    openSessionFallbackModal();
+    if(!keepModalOpen) openSessionFallbackModal();
     return;
   }
 
   setTimeout(() => {
     iframe.remove();
     if(appOpened) return;
+    if(keepModalOpen){
+      const status = document.getElementById('sessionLaunchStatus');
+      if(status){
+        status.style.display = 'block';
+        status.innerHTML = 'App Session nao detectado. Use <strong>Ver guia de instalacao</strong> ou <strong>Baixar Session</strong> abaixo.';
+      }
+      return;
+    }
     openSessionFallbackModal(sessionId);
   }, 1000);
 }
