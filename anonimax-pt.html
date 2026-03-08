@@ -589,6 +589,46 @@ function getPublicationFee(){
   return Number.isFinite(fee) && fee > 0 ? fee : 4.9;
 }
 
+function persistPendingAd(){
+  try{
+    if(pendingAd) sessionStorage.setItem(PENDING_AD_STORAGE_KEY, JSON.stringify(pendingAd));
+  }catch(_err){
+    // Ignore storage errors.
+  }
+}
+
+function restorePendingAd(){
+  if(pendingAd) return;
+  try{
+    const raw = sessionStorage.getItem(PENDING_AD_STORAGE_KEY);
+    if(!raw) return;
+    const parsed = JSON.parse(raw);
+    if(parsed && parsed.title && parsed.cat && parsed.desc && parsed.contact){
+      pendingAd = parsed;
+    }
+  }catch(_err){
+    // Ignore malformed storage data.
+  }
+}
+
+function clearPendingAdStorage(){
+  try{ sessionStorage.removeItem(PENDING_AD_STORAGE_KEY); }catch(_err){}
+}
+
+function showPaymentSuccessView(ad){
+  const holder = document.getElementById('payContent');
+  const btn = document.getElementById('payConfirmBtn');
+  if(!holder || !btn) return;
+  btn.style.display = 'none';
+  holder.innerHTML = `<div style="text-align:center;padding:20px 8px"><div style="font-size:2.2rem;margin-bottom:8px">OK</div><div style="font-size:1rem;font-weight:800;margin-bottom:8px">Pagamento confirmado</div><div style="font-size:0.82rem;color:var(--muted);line-height:1.7;margin-bottom:14px">Obrigado. Seu anuncio foi publicado com sucesso.</div>${ad?.title ? `<div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:0.76rem;color:var(--text);margin-bottom:14px">Anuncio: <strong>${ad.title}</strong></div>` : ''}<button class="submit-btn submit-green" onclick="closePay()">Fechar</button></div>`;
+}
+
+function clearPaypalReturnParams(){
+  const url = new URL(window.location.href);
+  ['token','PayerID','paypal_return','paypal_cancel'].forEach((k)=>url.searchParams.delete(k));
+  window.history.replaceState({}, '', url.toString());
+}
+
 const seedMembers = [
   {id:'ANX-00001',nick:'TechVendas_SP',session:'05ab8f3c2e1d4b9a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c',poly:'0x71C7656EC7ab88b098defB751B7401B5f6d8976F',since:'2025-01-10',av:'💻'},
   {id:'ANX-00002',nick:'ImoveisCarioca',session:'05cc9d4a1b2e7f3d8e4c5b6a7f8e9d0c1b2a3f4e5d6c7b8a',poly:'0x3a4B9c8D7e6F5a4B3c2D1e0F9a8B7c6D5e4F3a2B',since:'2025-01-22',av:'🏠'},
@@ -606,6 +646,7 @@ const seedAds = [
 let members = [...seedMembers];
 let ads = [...seedAds];
 let curCat='all', curPay='all', curPayMethod='paypal', pendingAd=null, regData={};
+const PENDING_AD_STORAGE_KEY = 'anonimax_pending_ad_v1';
 
 function isCloudConfigured(){
   return Boolean(APP_CONFIG.supabaseUrl && APP_CONFIG.supabaseAnonKey);
@@ -848,6 +889,7 @@ async function capturePaypalOrder(orderID){
 
 async function publishPendingAd(){
   if(!pendingAd) return;
+  const adPreview = { ...pendingAd };
   const adPayload = {
     id: Date.now(),
     ...pendingAd,
@@ -859,7 +901,49 @@ async function publishPendingAd(){
   document.getElementById('adPrice').value='';
   document.getElementById('adCat').value='';
   pendingAd = null;
+  clearPendingAdStorage();
   render();
+  return adPreview;
+}
+
+async function finalizePaypalOrder(orderID){
+  const holder = document.getElementById('payContent');
+  const btn = document.getElementById('payConfirmBtn');
+  if(holder){
+    holder.innerHTML = `<div style="text-align:center;padding:18px 6px"><div style="font-size:1.8rem;margin-bottom:8px">...</div><div style="font-size:0.84rem;color:var(--muted)">Confirmando pagamento e publicando anuncio...</div></div>`;
+  }
+  if(btn) btn.style.display = 'none';
+
+  await capturePaypalOrder(orderID);
+  paypalPaymentCompleted = true;
+  const publishedAd = await publishPendingAd();
+  showPaymentSuccessView(publishedAd);
+  showToast('Pagamento confirmado e anuncio publicado!','success');
+}
+
+async function handlePaypalRedirectReturn(){
+  const params = new URLSearchParams(window.location.search);
+  const orderToken = params.get('token');
+  if(!orderToken) return;
+
+  restorePendingAd();
+  if(!pendingAd){
+    showToast('Pagamento concluido, mas anuncio pendente nao foi encontrado.','error');
+    clearPaypalReturnParams();
+    return;
+  }
+
+  if(!document.getElementById('payModal').classList.contains('open')){
+    await openPayModal();
+  }
+
+  try{
+    await finalizePaypalOrder(orderToken);
+  }catch(err){
+    showToast(`Falha ao finalizar pagamento: ${err.message || err}`,'error');
+  }finally{
+    clearPaypalReturnParams();
+  }
 }
 
 async function renderPaypalButtons(){
@@ -879,12 +963,9 @@ async function renderPaypalButtons(){
     },
     onApprove: async (data) => {
       const orderID = data.orderID || data.orderId;
-      await capturePaypalOrder(orderID);
-      paypalPaymentCompleted = true;
-      await publishPendingAd();
-      closePay();
-      showToast('✓ Pagamento confirmado e anúncio publicado!','success');
+      await finalizePaypalOrder(orderID);
     },
+    onCancel: () => showToast('Pagamento PayPal cancelado.','error'),
     onError: (err) => showToast(`Falha no pagamento PayPal: ${err?.message || 'erro desconhecido'}`,'error')
   }).render('#paypalButtons');
 }
@@ -1068,6 +1149,7 @@ function submitAd(){
   const sel=members.find(m=>m.id===contact||m.session===contact);
   const ems={Venda:'🛒',Imóveis:'🏠',Emprego:'💼',Serviços:'⚙️',Veículos:'🚗',Eletrônicos:'📱',Outro:'📌'};
   pendingAd={title,cat,desc,price,contact,poly,sid:sel?sel.id:null,em:ems[cat]||'📌'};
+  persistPendingAd();
   paypalPaymentCompleted = false;
   openPayModal();
 }
@@ -1143,6 +1225,7 @@ window.addEventListener('DOMContentLoaded',()=>{
     render();
     const p=new URLSearchParams(window.location.search).get('anonimax');
     if(p)setTimeout(()=>openProfile(p),400);
+    await handlePaypalRedirectReturn();
   })();
 });
 </script>

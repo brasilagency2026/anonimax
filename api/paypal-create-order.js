@@ -17,6 +17,7 @@ module.exports = async (req, res) => {
     const clientId = process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID;
     const clientSecret = process.env.PAYPAL_CLIENT_SECRET || process.env.PAYPAL_SECRET;
     const paypalBase = process.env.PAYPAL_BASE_URL || 'https://api-m.sandbox.paypal.com';
+    const siteUrl = process.env.PUBLIC_SITE_URL || req.headers.origin || 'https://anonimax.com';
 
     if (!clientId || !clientSecret) {
       return res.status(500).json({ error: 'Missing PayPal credentials on Vercel' });
@@ -46,6 +47,11 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         intent: 'CAPTURE',
+        application_context: {
+          user_action: 'PAY_NOW',
+          return_url: `${siteUrl}/?paypal_return=1`,
+          cancel_url: `${siteUrl}/?paypal_cancel=1`
+        },
         purchase_units: [
           {
             description,
