@@ -635,10 +635,15 @@ const seedAds = [
   {id:5,title:'iPhone 15 Pro 256GB — lacrado',cat:'Eletrônicos',desc:'iPhone 15 Pro 256GB titânio natural. Lacrado, nota fiscal. Comprado nos EUA.',price:8500,contact:'05ab8f3c2e1d4b9a7f6e5d4c3b2a1f0e9d8c7b6a5f4e3d2c',poly:'0x71C7656EC7ab88b098defB751B7401B5f6d8976F',sid:'ANX-00001',em:'📱',date:'2025-03-02'},
 ];
 
-let members = [...seedMembers];
-let ads = [...seedAds];
+let members = [];
+let ads = [];
 let curCat='all', curPay='all', curPayMethod='paypal', pendingAd=null, regData={};
 const PENDING_AD_STORAGE_KEY = 'anonimax_pending_ad_v1';
+
+function loadSeedData(){
+  members = [...seedMembers];
+  ads = [...seedAds];
+}
 
 function isCloudConfigured(){
   return Boolean(APP_CONFIG.supabaseUrl && APP_CONFIG.supabaseAnonKey);
@@ -676,16 +681,6 @@ function mapAdRow(row){
     em: row.emoji || '📌',
     date: (row.created_at || '').split('T')[0] || new Date().toISOString().split('T')[0]
   };
-}
-
-function isLegacyDemoAd(ad){
-  const id = String(ad?.id || '').trim();
-  const title = String(ad?.title || '').trim().toLowerCase();
-  const desc = String(ad?.desc || '').trim().toLowerCase();
-  if(id === 'f295b13b-c64f-444c-a48c-9c3a3b6e48e9') return true;
-  if(title === 'desenvolvimento web freelance' && desc.includes('5 anos react/node.js')) return true;
-  if(title.includes('desenvolvedor') && desc.includes('mini saas')) return true;
-  return false;
 }
 
 function getSessionHref(sessionId){
@@ -778,11 +773,11 @@ async function loadDataFromSupabase(){
   if(adsRes.error){
     // Some deployments block anon SELECT on ads; fallback to server route with service role.
     const serverData = await callSupabaseFunction('/api/list-ads', {});
-    const mappedAds = (serverData.ads || []).map(mapAdRow).filter((ad)=>!isLegacyDemoAd(ad));
+    const mappedAds = (serverData.ads || []).map(mapAdRow);
     // Keep current in-memory ads if server returns an empty/invalid list.
     ads = mappedAds.length ? mappedAds : previousAds;
   } else {
-    const mappedAds = (adsRes.data || []).map(mapAdRow).filter((ad)=>!isLegacyDemoAd(ad));
+    const mappedAds = (adsRes.data || []).map(mapAdRow);
     ads = mappedAds.length ? mappedAds : previousAds;
   }
 }
@@ -1313,11 +1308,22 @@ window.addEventListener('DOMContentLoaded',()=>{
   (async ()=>{
     try{
       await loadRuntimeConfig();
+      if(!isCloudConfigured()){
+        // Dev/demo fallback only when cloud is not configured.
+        loadSeedData();
+      }
       await initCloud();
       if(cloudMode) showToast('Modo cloud ativo: Supabase conectado.','success');
     }catch(err){
       cloudMode = false;
-      showToast(`Supabase indisponivel, usando dados locais: ${err.message || err}`,'error');
+      if(isCloudConfigured()){
+        members = [];
+        ads = [];
+        showToast(`Supabase indisponivel: ${err.message || err}`,'error');
+      } else {
+        loadSeedData();
+        showToast('Modo demo local ativo (sem Supabase configurado).','error');
+      }
     }
     render();
     const p=new URLSearchParams(window.location.search).get('anonimax');
