@@ -817,8 +817,23 @@ async function saveAdToSupabase(ad){
 
   const maxAttempts = Object.keys(payload).length + 2;
   for(let i=0;i<maxAttempts;i++){
-    const { data, error } = await sb.from('ads').insert(payload).select().single();
-    if(!error) return mapAdRow(data);
+    const { error } = await sb.from('ads').insert(payload);
+    if(!error){
+      // Do not request representation from PostgREST; some deployments allow INSERT but block SELECT.
+      const syntheticRow = {
+        id: ad.id || Date.now(),
+        title: payload.title,
+        category: payload.category,
+        description: payload.description,
+        price: payload.price,
+        contact_session: payload.contact_session,
+        polygon_address: payload.polygon_address,
+        anonimax_id: payload.anonimax_id || null,
+        emoji: payload.emoji,
+        created_at: new Date().toISOString()
+      };
+      return mapAdRow(syntheticRow);
+    }
 
     const msg = String(error.message || '');
     const details = String(error.details || '');
@@ -993,7 +1008,12 @@ async function renderPaypalButtons(){
     },
     onApprove: async (data) => {
       const orderID = data.orderID || data.orderId;
-      await finalizePaypalOrder(orderID);
+      try{
+        await finalizePaypalOrder(orderID);
+      }catch(err){
+        console.error('PayPal onApprove finalize error', err);
+        showToast(`Pagamento ok, mas falha ao publicar anuncio: ${err.message || err}`,'error');
+      }
     },
     onCancel: () => showToast('Pagamento PayPal cancelado.','error'),
     onError: (err) => showToast(`Falha no pagamento PayPal: ${err?.message || 'erro desconhecido'}`,'error')
