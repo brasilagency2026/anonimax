@@ -636,50 +636,49 @@ function mapAdRow(row){
   };
 }
 
-function openSessionLink(sessionId){
-  if(!sessionId){
-    showToast('ID Session invalido','error');
-    return;
-  }
-
+function getSessionHref(sessionId){
+  if(!sessionId) return '#';
   const encodedId = encodeURIComponent(sessionId);
   const ua = (navigator.userAgent || '').toLowerCase();
   const isAndroid = /android/.test(ua);
-  const isiOS = /iphone|ipad|ipod/.test(ua);
-
-  // Session iOS handles DM via: sessionmessenger://DM?sessionID=<id>
-  const iosDmLink = `sessionmessenger://DM?sessionID=${encodedId}`;
-  const legacyLink = `session://session.org/conversation?sessionid=${encodedId}`;
-  const androidIntent = `intent://DM?sessionID=${encodedId}#Intent;scheme=sessionmessenger;package=network.loki.messenger;end`;
-
-  if(isiOS){
-    window.location.href = iosDmLink;
-    return;
-  }
+  const isMobileApple = /iphone|ipad|ipod/.test(ua);
 
   if(isAndroid){
-    window.location.href = iosDmLink;
-    setTimeout(()=>{ window.location.href = androidIntent; }, 180);
-    setTimeout(()=>{ window.location.href = legacyLink; }, 420);
-    return;
+    return `intent://DM?sessionID=${encodedId}#Intent;scheme=sessionmessenger;package=network.loki.messenger;end`;
   }
-
-  window.location.href = iosDmLink;
-  setTimeout(()=>{ window.location.href = legacyLink; }, 220);
+  if(isMobileApple){
+    return `sessionmessenger://DM?sessionID=${encodedId}`;
+  }
+  return `session://session.org/conversation?sessionid=${encodedId}`;
 }
 
 function handleSessionClick(event, sessionId){
-  if(event){
-    event.preventDefault();
-    event.stopPropagation();
-  }
   if(!sessionId){
+    if(event){
+      event.preventDefault();
+      event.stopPropagation();
+    }
     showToast('ID Session invalido','error');
     return false;
   }
+
   showToast('Abrindo Session...','success');
-  openSessionLink(sessionId);
-  return false;
+
+  // If no app handler is registered on mobile, redirect to Session download.
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const isMobile = /android|iphone|ipad|ipod/.test(ua);
+  if(isMobile){
+    let switchedToApp = false;
+    const markHidden = () => { if(document.hidden) switchedToApp = true; };
+    document.addEventListener('visibilitychange', markHidden, { once:true });
+    setTimeout(()=>{
+      if(!switchedToApp && !document.hidden){
+        window.location.href = 'https://getsession.org/download';
+      }
+    }, 1200);
+  }
+
+  return true;
 }
 
 async function initCloud(){
@@ -887,7 +886,7 @@ function openProfile(id){
       </div>
     </div>
     <div style="padding:18px 22px">
-      <a href="#" data-session-link="${m.session}" onclick="return handleSessionClick(event, '${m.session}')" class="profile-action pact-session"><span style="font-size:1.1rem">🔒</span> Conversar no Session</a>
+      <a href="${getSessionHref(m.session)}" data-session-link="${m.session}" onclick="return handleSessionClick(event, '${m.session}')" class="profile-action pact-session"><span style="font-size:1.1rem">🔒</span> Conversar no Session</a>
       ${m.poly?`<div style="border:1px solid rgba(245,158,11,0.3);border-radius:11px;overflow:hidden;margin-bottom:10px">
         <div style="background:rgba(245,158,11,0.07);padding:10px 14px;display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:7px"><span style="color:var(--gold);font-weight:900;font-size:1.05rem">$</span><div><div style="font-size:0.76rem;font-weight:800;color:var(--gold)">Pagar em BRZ</div><div style="font-size:0.65rem;color:var(--muted)">Polygon · 1 BRZ = 1 Real</div></div></div>
@@ -919,7 +918,7 @@ function openDetail(id){
     <div style="padding:20px 22px">
       <div style="font-size:1.8rem;font-weight:800;font-family:'Space Mono',monospace;color:var(--accent);margin-bottom:12px">${a.price===0?'A combinar':'R$ '+a.price.toLocaleString('pt-BR')}</div>
       <div style="font-size:0.86rem;color:var(--muted);line-height:1.7;margin-bottom:16px">${a.desc}</div>
-      <a href="#" data-session-link="${a.contact}" onclick="return handleSessionClick(event, '${a.contact}')" style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:14px;background:var(--accent);color:#000;border-radius:12px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:800;font-size:0.92rem;transition:all 0.2s;margin-bottom:9px" onmouseover="this.style.background='#00e077';this.style.transform='translateY(-2px)'" onmouseout="this.style.background='var(--accent)';this.style.transform='none'">
+      <a href="${getSessionHref(a.contact)}" data-session-link="${a.contact}" onclick="return handleSessionClick(event, '${a.contact}')" style="display:flex;align-items:center;justify-content:center;gap:9px;width:100%;padding:14px;background:var(--accent);color:#000;border-radius:12px;text-decoration:none;font-family:'Syne',sans-serif;font-weight:800;font-size:0.92rem;transition:all 0.2s;margin-bottom:9px" onmouseover="this.style.background='#00e077';this.style.transform='translateY(-2px)'" onmouseout="this.style.background='var(--accent)';this.style.transform='none'">
         <span style="font-size:1.1rem">🔒</span> Conversar no Session
       </a>
       <div style="text-align:center;font-size:0.68rem;color:var(--muted);font-family:'Space Mono',monospace;margin-bottom:11px">Abre o Session automaticamente · <a href="#" onclick="closeDetail();openTutorial('android');return false" style="color:var(--accent)">Instalar Session</a></div>
