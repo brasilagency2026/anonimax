@@ -466,26 +466,6 @@
   </div>
 </div>
 
-<!-- ═══ MODAL: SESSION FALLBACK ═══ -->
-<div class="modal-overlay" id="sessionHelpModal">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header">
-      <span class="modal-title">🔒 Abrir no Session</span>
-      <button class="modal-close" onclick="closeSessionHelpModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div style="font-size:0.86rem;color:var(--muted);line-height:1.7;margin-bottom:16px">
-        Para conversar com seguranca, abra pelo app Session. Se o app nao estiver instalado, use o guia ou download abaixo.
-      </div>
-      <div style="display:flex;flex-direction:column;gap:9px">
-        <button class="submit-btn submit-green" onclick="openSessionGuide()">📖 Ver guia de instalacao</button>
-        <button class="submit-btn submit-gold" onclick="openSessionDownload()">⬇️ Baixar Session</button>
-        <button class="submit-btn" onclick="closeSessionHelpModal()" style="background:transparent;border:1px solid var(--border);color:var(--muted)">Cancelar</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ═══ MODAL: TUTORIAL ═══ -->
 <div class="modal-overlay" id="tutModal">
   <div class="modal tut-modal">
@@ -656,55 +636,36 @@ function mapAdRow(row){
   };
 }
 
-function getSessionHelpTab(){
-  const ua = (navigator.userAgent || '').toLowerCase();
-  if(/android/.test(ua)) return 'android';
-  if(/iphone|ipad|ipod|mac os x/.test(ua)) return 'ios';
-  return 'como';
-}
-
-function openSessionFallbackModal(){
-  document.getElementById('sessionHelpModal').classList.add('open');
-}
-
-function closeSessionHelpModal(){
-  document.getElementById('sessionHelpModal').classList.remove('open');
-}
-
-function openSessionGuide(){
-  closeSessionHelpModal();
-  openTutorial(getSessionHelpTab());
-}
-
-function openSessionDownload(){
-  closeSessionHelpModal();
-  window.open('https://getsession.org/download', '_blank', 'noopener');
-}
-
 function openSessionLink(sessionId){
   if(!sessionId){
     showToast('ID Session invalido','error');
     return;
   }
 
-  const deepLink = `session://session.org/conversation?sessionid=${encodeURIComponent(sessionId)}`;
-  let appOpened = false;
+  const encodedId = encodeURIComponent(sessionId);
+  const ua = (navigator.userAgent || '').toLowerCase();
+  const isAndroid = /android/.test(ua);
+  const isiOS = /iphone|ipad|ipod/.test(ua);
 
-  const markOpened = () => {
-    appOpened = true;
-  };
-  document.addEventListener('visibilitychange', () => {
-    if(document.hidden) markOpened();
-  }, { once: true });
-  window.addEventListener('blur', markOpened, { once: true });
+  // Session iOS handles DM via: sessionmessenger://DM?sessionID=<id>
+  const iosDmLink = `sessionmessenger://DM?sessionID=${encodedId}`;
+  const legacyLink = `session://session.org/conversation?sessionid=${encodedId}`;
+  const androidIntent = `intent://DM?sessionID=${encodedId}#Intent;scheme=sessionmessenger;package=network.loki.messenger;end`;
 
-  // Direct navigation from the user gesture gives the highest chance to open native app handlers.
-  window.location.assign(deepLink);
+  if(isiOS){
+    window.location.href = iosDmLink;
+    return;
+  }
 
-  setTimeout(() => {
-    if(appOpened) return;
-    openSessionFallbackModal();
-  }, 1200);
+  if(isAndroid){
+    window.location.href = iosDmLink;
+    setTimeout(()=>{ window.location.href = androidIntent; }, 180);
+    setTimeout(()=>{ window.location.href = legacyLink; }, 420);
+    return;
+  }
+
+  window.location.href = iosDmLink;
+  setTimeout(()=>{ window.location.href = legacyLink; }, 220);
 }
 
 function handleSessionClick(event, sessionId){
@@ -716,7 +677,7 @@ function handleSessionClick(event, sessionId){
     showToast('ID Session invalido','error');
     return false;
   }
-  showToast('Tentando abrir Session...','success');
+  showToast('Abrindo Session...','success');
   openSessionLink(sessionId);
   return false;
 }
@@ -1080,7 +1041,7 @@ function closeTut(){document.getElementById('tutModal').classList.remove('open')
 function swTab(name){const tabs=['como','android','ios','id','chainless'];document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',tabs[i]===name));document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));}
 
 // ═══ CLOSE ON OVERLAY ═══
-['detailModal','postModal','payModal','sessionHelpModal','tutModal','registerModal','profileModal'].forEach(id=>{
+['detailModal','postModal','payModal','tutModal','registerModal','profileModal'].forEach(id=>{
   document.getElementById(id).addEventListener('click',function(e){
     if(e.target!==this)return;
     if(id==='detailModal')closeDetail();
