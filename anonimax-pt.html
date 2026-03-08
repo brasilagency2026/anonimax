@@ -576,9 +576,17 @@ async function loadRuntimeConfig(){
         ...(runtime.paypalFunctions || {})
       }
     };
+
+    const fee = Number(String(APP_CONFIG.publicationFee ?? '').replace(',', '.'));
+    APP_CONFIG.publicationFee = Number.isFinite(fee) && fee > 0 ? fee : 4.9;
   }catch(_err){
     // Fallback to static defaults when /api/config is not available.
   }
+}
+
+function getPublicationFee(){
+  const fee = Number(String(APP_CONFIG.publicationFee ?? '').replace(',', '.'));
+  return Number.isFinite(fee) && fee > 0 ? fee : 4.9;
 }
 
 const seedMembers = [
@@ -822,8 +830,9 @@ async function callSupabaseFunction(name, body){
 }
 
 async function createPaypalOrder(){
+  const publicationFee = getPublicationFee();
   const data = await callSupabaseFunction(APP_CONFIG.paypalFunctions.createOrder, {
-    amount: APP_CONFIG.publicationFee,
+    amount: publicationFee,
     currency: 'BRL',
     description: 'Taxa de publicação Anonimax'
   });
@@ -1066,10 +1075,11 @@ async function openPayModal(){
   closePost();
   const c=document.getElementById('payContent');
   const btn = document.getElementById('payConfirmBtn');
+  const publicationFee = getPublicationFee();
   btn.style.display='block';
-  btn.textContent=`✓ Confirmar (R$ ${APP_CONFIG.publicationFee.toFixed(2).replace('.',',')})`;
+  btn.textContent=`✓ Confirmar (R$ ${publicationFee.toFixed(2).replace('.',',')})`;
   if(curPayMethod==='paypal'){
-    c.innerHTML=`<div style="text-align:center;padding:16px 0"><div style="font-size:2.6rem;margin-bottom:12px">🅿️</div><div style="font-size:0.86rem;color:var(--muted);margin-bottom:16px">Pagamento da taxa de publicação.</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:13px;font-family:'Space Mono',monospace;font-size:0.8rem;margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--muted)">Publicação</span><span>R$ ${APP_CONFIG.publicationFee.toFixed(2).replace('.',',')}</span></div><div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border)"><span style="color:var(--muted)">Total</span><span style="color:var(--accent);font-weight:700">R$ ${APP_CONFIG.publicationFee.toFixed(2).replace('.',',')}</span></div></div><div id="paypalButtons"></div></div>`;
+    c.innerHTML=`<div style="text-align:center;padding:16px 0"><div style="font-size:2.6rem;margin-bottom:12px">🅿️</div><div style="font-size:0.86rem;color:var(--muted);margin-bottom:16px">Pagamento da taxa de publicação.</div><div style="background:var(--surface2);border:1px solid var(--border);border-radius:9px;padding:13px;font-family:'Space Mono',monospace;font-size:0.8rem;margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--muted)">Publicação</span><span>R$ ${publicationFee.toFixed(2).replace('.',',')}</span></div><div style="display:flex;justify-content:space-between;padding-top:6px;border-top:1px solid var(--border)"><span style="color:var(--muted)">Total</span><span style="color:var(--accent);font-weight:700">R$ ${publicationFee.toFixed(2).replace('.',',')}</span></div></div><div id="paypalButtons"></div></div>`;
     if(cloudMode && APP_CONFIG.paypalClientId){
       btn.style.display='none';
       try{ await renderPaypalButtons(); }

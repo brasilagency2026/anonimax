@@ -1,6 +1,12 @@
 module.exports = (req, res) => {
   res.setHeader('Cache-Control', 'no-store, max-age=0');
 
+  const parseFee = (raw) => {
+    const normalized = String(raw ?? '').replace(',', '.').trim();
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 4.9;
+  };
+
   const supabaseUrl =
     process.env.SUPABASE_URL ||
     process.env.NEXT_PUBLIC_SUPABASE_URL ||
@@ -18,7 +24,7 @@ module.exports = (req, res) => {
     supabaseUrl,
     supabaseAnonKey,
     paypalClientId,
-    publicationFee: Number(process.env.PUBLICATION_FEE || '4.90'),
+    publicationFee: parseFee(process.env.PUBLICATION_FEE),
     paypalFunctions: {
       createOrder: process.env.PAYPAL_CREATE_ORDER_FUNCTION || '/api/paypal-create-order',
       captureOrder: process.env.PAYPAL_CAPTURE_ORDER_FUNCTION || '/api/paypal-capture-order'
