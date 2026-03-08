@@ -82,7 +82,6 @@
 
   .listings-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
   .listings-count{font-size:0.83rem;color:var(--muted);font-family:'Space Mono',monospace;}
-  .sort-select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 11px;color:var(--text);font-family:'Syne',sans-serif;font-size:0.8rem;cursor:pointer;outline:none;}
   .ads-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
   .ad-card{background:var(--surface);border:1px solid var(--border);border-radius:13px;overflow:hidden;cursor:pointer;transition:all 0.25s;animation:fadeInUp 0.4s ease both;}
   .ad-card:hover{transform:translateY(-3px);border-color:var(--accent);box-shadow:0 8px 28px rgba(0,255,136,0.1);}
@@ -212,7 +211,6 @@
     .stats-bar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
     .stat-num{font-size:1.28rem;}
     .listings-header{flex-direction:column;align-items:stretch;gap:8px;}
-    .sort-select{width:100%;}
     .ads-grid{grid-template-columns:1fr;gap:11px;}
     .ad-img{height:132px;}
     .modal-overlay{padding:10px;padding-bottom:max(10px, env(safe-area-inset-bottom));align-items:flex-start;}
@@ -339,11 +337,6 @@
   <main>
     <div class="listings-header">
       <span class="listings-count" id="listingsCount">Carregando...</span>
-      <select class="sort-select" id="sortSel" onchange="filterAds()">
-        <option value="recent">Mais recentes</option>
-        <option value="asc">Menor preço</option>
-        <option value="desc">Maior preço</option>
-      </select>
     </div>
     <div class="ads-grid" id="adsGrid"></div>
   </main>
@@ -765,6 +758,7 @@ async function initCloud(){
 
 async function loadDataFromSupabase(){
   if(!sb) return;
+  const previousAds = Array.isArray(ads) ? [...ads] : [];
   const [profilesRes, adsRes] = await Promise.all([
     sb.from('profiles').select('*').order('created_at',{ascending:true}),
     sb.from('ads').select('*').order('created_at',{ascending:false})
@@ -775,9 +769,12 @@ async function loadDataFromSupabase(){
   if(adsRes.error){
     // Some deployments block anon SELECT on ads; fallback to server route with service role.
     const serverData = await callSupabaseFunction('/api/list-ads', {});
-    ads = (serverData.ads || []).map(mapAdRow);
+    const mappedAds = (serverData.ads || []).map(mapAdRow);
+    // Keep current in-memory ads if server returns an empty/invalid list.
+    ads = mappedAds.length ? mappedAds : previousAds;
   } else {
-    ads = (adsRes.data || []).map(mapAdRow);
+    const mappedAds = (adsRes.data || []).map(mapAdRow);
+    ads = mappedAds.length ? mappedAds : previousAds;
   }
 }
 
@@ -1066,13 +1063,11 @@ async function renderPaypalButtons(){
 function render() {
   const grid = document.getElementById('adsGrid');
   const q = document.getElementById('searchInput').value.toLowerCase();
-  const sort = document.getElementById('sortSel').value;
   let f = ads.filter(a => {
     return (curCat==='all'||a.cat===curCat) && (curPay==='all'||(curPay==='brz'&&a.poly)) && (!q||a.title.toLowerCase().includes(q)||a.desc.toLowerCase().includes(q));
   });
-  if(sort==='asc') f.sort((a,b)=>a.price-b.price);
-  if(sort==='desc') f.sort((a,b)=>b.price-a.price);
-  if(sort==='recent') f.sort((a,b)=>new Date(b.date)-new Date(a.date));
+  // Keep a single predictable order (newest first).
+  f.sort((a,b)=>new Date(b.date)-new Date(a.date));
   document.getElementById('listingsCount').textContent=`${f.length} anúncio${f.length!==1?'s':''} encontrado${f.length!==1?'s':''}`;
   if(!f.length){grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">🔍</div><h3>Nenhum anúncio encontrado</h3><p>Tente outros filtros ou publique o primeiro!</p></div>`;updateStats();return;}
   grid.innerHTML=f.map((a,i)=>`
