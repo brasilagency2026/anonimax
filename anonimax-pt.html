@@ -941,7 +941,10 @@ async function callSupabaseFunction(name, body){
   if(raw){
     try{ json = JSON.parse(raw); }catch(_err){ json = { raw }; }
   }
-  if(!res.ok) throw new Error(json.error || json.message || raw || `Erro HTTP ${res.status}`);
+  if(!res.ok){
+    const details = json.details ? (typeof json.details === 'string' ? json.details : JSON.stringify(json.details)) : '';
+    throw new Error([json.error || json.message || raw || `Erro HTTP ${res.status}`, details].filter(Boolean).join(' | '));
+  }
   return json;
 }
 
@@ -972,12 +975,7 @@ async function publishPendingAd(){
   };
   let savedAd = adPayload;
   if(cloudMode){
-    try{
-      savedAd = await saveAdToServer(adPayload);
-    }catch(serverErr){
-      // Fallback for local/dev without service role route.
-      savedAd = await saveAdToSupabase(adPayload);
-    }
+    savedAd = await saveAdToServer(adPayload);
   }
   ads.unshift(savedAd);
   ['adTitle','adDesc','adContact','adPoly'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
