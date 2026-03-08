@@ -687,27 +687,14 @@ async function handleSessionClick(event, sessionId){
 
   showToast('Abrindo Session...','success');
 
-  // If no app handler is registered on mobile, redirect to Session download.
   const ua = (navigator.userAgent || '').toLowerCase();
   const isAndroid = /android/.test(ua);
-  const isMobile = /android|iphone|ipad|ipod/.test(ua);
 
   // Android Session currently opens app from deep-link, but does not always jump to DM.
   // Copying the contact ID on click makes pasting into "Nova conversa" immediate.
   if(isAndroid){
     const copied = await copyTextSafe(sessionId);
     if(copied) showToast('ID Session copiado para colar no app.','success');
-  }
-
-  if(isMobile){
-    let switchedToApp = false;
-    const markHidden = () => { if(document.hidden) switchedToApp = true; };
-    document.addEventListener('visibilitychange', markHidden, { once:true });
-    setTimeout(()=>{
-      if(!switchedToApp && !document.hidden){
-        window.location.href = 'https://getsession.org/download';
-      }
-    }, 1200);
   }
 
   return true;
